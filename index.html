@@ -110,6 +110,7 @@
     .slot img:active { cursor: grabbing; }
     .slot-placeholder { position: absolute; font-size: 0.65rem; color: #424e5a; text-transform: uppercase; font-weight: bold; text-align: center; }
 
+    /* Swap icon badge overlay in bottom right corner - powiększony do 34px */
     .swap-badge {
       position: absolute;
       bottom: 2px;
@@ -154,6 +155,7 @@
       outline: none;
     }
 
+    /* Tryb obrazu / Screenshot mode */
     body.screenshot-mode .hide-ss { display: none !important; }
     body.screenshot-mode .build-card { border-color: var(--accent-gold); background: var(--card-bg) !important; }
     body.screenshot-mode .collection-section { display: block !important; }
@@ -301,7 +303,7 @@
 
 <script>
 const CURRENT_DATA_VERSION = 8;
-const ITEMS_ICON_CDN = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/images/';
+const PRIMARY_RENDER_CDN = 'https://render.albiononline.com/v1/item/';
 const ITEMS_DB_URL = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/formatted/items.json';
 
 let currentLang = localStorage.getItem('ao_lang') || 'PL-PL';
@@ -325,6 +327,27 @@ function loadAndMigrateData() {
       try {
         const parsed = JSON.parse(oldData);
         localStorage.removeItem('ao_categories_v' + v);
+        if (parsed && parsed.categories) {
+          parsed.categories.forEach(cat => {
+            delete cat.collapsed;
+            if (cat.subgroups) {
+              cat.subgroups.forEach(sub => {
+                if (sub.collapsed === undefined) sub.collapsed = false;
+                if (sub.builds) {
+                  sub.builds.forEach(build => {
+                    if (build.slots) {
+                      Object.keys(build.slots).forEach(slotKey => {
+                        if (slotKey !== 'Bag' && build.slots[slotKey] && build.slots[slotKey].swap === undefined) {
+                          build.slots[slotKey].swap = null;
+                        }
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
         return parsed;
       } catch(e) {}
     }
@@ -381,10 +404,7 @@ function getItemImageUrl(itemId, tier, enchant) {
   if (!itemId.startsWith('T4_') && !itemId.startsWith('T5_') && !itemId.startsWith('T6_') && !itemId.startsWith('T7_') && !itemId.startsWith('T8_') && !itemId.startsWith('UNIQUE_')) {
     fullId = `${tier}_${itemId}`;
   }
-  if (enchant) {
-    fullId += enchant;
-  }
-  return `${ITEMS_ICON_CDN}${fullId}.png`;
+  return `${PRIMARY_RENDER_CDN}${fullId}${enchant || ''}.png?quality=4`;
 }
 
 function buildItemsForLang(targetLanguage) {
@@ -593,15 +613,17 @@ function render() {
             let swapBadgeTag = '';
 
             if (item && !isDisabled) {
-              const imgSrc = getItemImageUrl(item.id, item.tier, item.enchant);
+              const primarySrc = getItemImageUrl(item.id, item.tier, item.enchant);
+              const fallbackSrc = `${PRIMARY_RENDER_CDN}${item.rawId || item.id}.png?quality=4`;
 
-              imgTag = `<img src="${imgSrc}" crossorigin="anonymous" alt="${slotKey}" draggable="true" ondragstart="handleDragStart(event, ${cIdx}, ${sIdx}, ${bIdx}, '${slotKey}')" />`;
+              imgTag = `<img src="${primarySrc}" onerror="this.onerror=null;this.src='${fallbackSrc}';" alt="${slotKey}" draggable="true" ondragstart="handleDragStart(event, ${cIdx}, ${sIdx}, ${bIdx}, '${slotKey}')" />`;
               
               if (slotKey !== 'Bag' && item.swap) {
-                const swapImgSrc = getItemImageUrl(item.swap.id, item.swap.tier, item.swap.enchant);
+                const swapPrimarySrc = getItemImageUrl(item.swap.id, item.swap.tier, item.swap.enchant);
+                const swapFallbackSrc = `${PRIMARY_RENDER_CDN}${item.swap.rawId || item.swap.id}.png?quality=4`;
                 swapBadgeTag = `
                   <div class="swap-badge" title="Swap: ${item.swap.id}">
-                    <img src="${swapImgSrc}" crossorigin="anonymous" />
+                    <img src="${swapPrimarySrc}" onerror="this.onerror=null;this.src='${swapFallbackSrc}';" />
                   </div>
                 `;
               }
@@ -981,6 +1003,7 @@ function updateModalPreview() {
   }
 
   const itemId = itemSelect.value;
+  const rawId = selectedOpt.getAttribute('data-rawid');
   const availableTiers = JSON.parse(selectedOpt.getAttribute('data-tiers') || '[]');
   const tierSelect = document.getElementById('modalTierSelect');
 
@@ -1000,7 +1023,8 @@ function updateModalPreview() {
   const tier = tierSelect.value;
   const enchant = document.getElementById('modalEnchantSelect').value;
   
-  const imgSrc = getItemImageUrl(itemId, tier, enchant);
+  const primarySrc = getItemImageUrl(itemId, tier, enchant);
+  const fallbackSrc = `${PRIMARY_RENDER_CDN}${rawId}.png?quality=4`;
 
   let swapOverlayHTML = '';
   if (activeTarget.slotKey !== 'Bag') {
@@ -1008,16 +1032,18 @@ function updateModalPreview() {
     const swapOpt = swapSelect.options[swapSelect.selectedIndex];
     if (swapOpt && swapOpt.value !== '') {
       const swapId = swapOpt.value;
-      const swapImgSrc = getItemImageUrl(swapId, tier, enchant);
+      const swapRawId = swapOpt.getAttribute('data-rawid');
+      const swapPrimarySrc = getItemImageUrl(swapId, tier, enchant);
+      const swapFallbackSrc = `${PRIMARY_RENDER_CDN}${swapRawId}.png?quality=4`;
       swapOverlayHTML = `
         <div class="swap-badge">
-          <img src="${swapImgSrc}" crossorigin="anonymous" />
+          <img src="${swapPrimarySrc}" onerror="this.onerror=null;this.src='${swapFallbackSrc}';" />
         </div>
       `;
     }
   }
 
-  previewBox.innerHTML = `<img src="${imgSrc}" crossorigin="anonymous" />${swapOverlayHTML}`;
+  previewBox.innerHTML = `<img src="${primarySrc}" onerror="this.onerror=null;this.src='${fallbackSrc}';" />${swapOverlayHTML}`;
 }
 
 function applySlotSelection() {
@@ -1076,37 +1102,6 @@ function toggleScreenshotMode() {
   document.body.classList.toggle('screenshot-mode');
 }
 
-async function inlineImagesAsBase64(rootElement) {
-  const images = rootElement.querySelectorAll('img');
-  const promises = Array.from(images).map(img => {
-    return new Promise((resolve) => {
-      const src = img.src;
-      if (!src || src.startsWith('data:')) {
-        resolve();
-        return;
-      }
-      const imageObj = new Image();
-      imageObj.crossOrigin = 'anonymous';
-      imageObj.onload = function() {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = imageObj.naturalWidth || 64;
-          canvas.height = imageObj.naturalHeight || 64;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(imageObj, 0, 0);
-          img.src = canvas.toDataURL('image/png');
-        } catch (e) {}
-        resolve();
-      };
-      imageObj.onerror = function() {
-        resolve();
-      };
-      imageObj.src = src;
-    });
-  });
-  await Promise.all(promises);
-}
-
 async function generateHighResImage() {
   const element = document.body;
   
@@ -1117,30 +1112,20 @@ async function generateHighResImage() {
     await new Promise(resolve => script.onload = resolve);
   }
 
-  const controls = document.querySelector('.screenshot-controls');
-  controls.style.display = 'none';
+  document.querySelector('.screenshot-controls').style.display = 'none';
 
-  try {
-    await inlineImagesAsBase64(element);
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#0a0c0e'
+  });
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#0a0c0e'
-    });
+  document.querySelector('.screenshot-controls').style.display = 'flex';
 
-    const link = document.createElement('a');
-    link.download = 'albion_all_sets.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  } catch (err) {
-    console.error("Błąd generowania obrazu:", err);
-    alert("Wystąpił problem podczas generowania obrazka.");
-  } finally {
-    controls.style.display = 'flex';
-    render();
-  }
+  const link = document.createElement('a');
+  link.download = 'albion_all_sets.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 function exportJSON() {
@@ -1153,7 +1138,8 @@ function exportJSON() {
   URL.revokeObjectURL(url);
 }
 
-function importJSON() {
+function importJSON()
+{
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json';
