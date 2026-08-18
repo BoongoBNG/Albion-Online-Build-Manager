@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albion Set Manager</title>
+  <style>
+    :root {
+      --bg-dark: #0a0c0e;
+      --panel-bg: #12161a;
+      --card-bg: #181e24;
+      --accent-gold: #d4a340;
+      --text-main: #dbe4ed;
+      --text-muted: #6c7b8a;
+      --border-color: #2a343e;
+      --slot-size: 74px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); padding: 20px; padding-bottom: 60px; min-height: 100vh; position: relative; }
+
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+    h1 { color: var(--accent-gold); font-size: 1.8rem; text-transform: uppercase; }
+    
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    button, select.lang-select { background-color: #212933; border: 1px solid var(--border-color); color: #fff; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s ease; }
+    button:hover { background-color: var(--accent-gold); color: #000; }
+    button.primary { background-color: var(--accent-gold); color: #000; }
+    button.danger { background-color: #8b0000; color: #fff; }
+    button.danger:hover { background-color: #ff4d4d; color: #000; }
+
+    #saveStatus {
+      font-size: 0.75rem;
+      color: #2ecc71;
+      background: rgba(46, 204, 113, 0.1);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      padding: 4px 8px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #saveStatus.show { opacity: 1; }
+
+    .tabs-bar { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; align-items: center; }
+    .tab-btn { background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+    .tab-btn:hover { color: #fff; border-color: var(--accent-gold); }
+    .tab-btn.active { background: var(--accent-gold); color: #000; border-color: var(--accent-gold); }
+
+    .collection-section { background: rgba(18, 22, 26, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 30px; position: relative; display: none; }
+    .collection-section.active { display: block; }
+    
+    .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px dashed var(--border-color); padding-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .category-title-wrapper { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 250px; }
+    .category-title { background: transparent; border: none; border-bottom: 2px dashed var(--accent-gold); color: var(--accent-gold); font-size: 1.4rem; font-weight: bold; padding: 4px; width: 350px; max-width: 100%; }
+
+    .subgroup-container { background: rgba(24, 30, 36, 0.4); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; }
+    .subgroup-container.collapsed .subgroup-body { display: none; }
+    .subgroup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; gap: 10px; flex-wrap: wrap; }
+    .subgroup-title-wrapper { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 250px; }
+    .subgroup-title { background: transparent; border: none; border-bottom: 1px solid var(--accent-gold); color: var(--text-main); font-size: 1.1rem; font-weight: bold; padding: 2px; width: 250px; max-width: 100%; }
+
+    .builds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px; margin-bottom: 15px; }
+    .build-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; position: relative; display: flex; flex-direction: column; gap: 15px; }
+    .build-header { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+    .build-name { background: transparent; border: none; color: #fff; font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid transparent; width: 60%; }
+    .build-name:focus { border-bottom-color: var(--accent-gold); outline: none; }
+    .build-actions { display: flex; gap: 4px; }
+
+    .equipment-paperdoll {
+      display: grid;
+      grid-template-columns: repeat(3, var(--slot-size));
+      grid-template-rows: repeat(4, var(--slot-size));
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .slot-Bag       { grid-column: 1; grid-row: 1; }
+    .slot-Head      { grid-column: 2; grid-row: 1; }
+    .slot-Cape      { grid-column: 3; grid-row: 1; }
+    .slot-MainHand  { grid-column: 1; grid-row: 2; }
+    .slot-Armor     { grid-column: 2; grid-row: 2; }
+    .slot-OffHand   { grid-column: 3; grid-row: 2; }
+    .slot-Potion    { grid-column: 1; grid-row: 3; }
+    .slot-Shoes     { grid-column: 2; grid-row: 3; }
+    .slot-Food      { grid-column: 3; grid-row: 3; }
+    .slot-Mount     { grid-column: 2; grid-row: 4; }
+
+    .slot {
+      width: var(--slot-size); height: var(--slot-size);
+      background-color: var(--panel-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 6px; position: relative; display: flex;
+      align-items: center; justify-content: center; cursor: pointer;
+      overflow: hidden; user-select: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .slot:hover { border-color: var(--accent-gold); }
+    .slot.drag-over { border-color: #2ecc71; background-color: rgba(46, 204, 113, 0.15); }
+    .slot.drag-over-invalid { border-color: #8b0000; background-color: rgba(139, 0, 0, 0.15); }
+    
+    .slot.disabled { opacity: 0.25; pointer-events: none; background-color: #050607; border-style: dashed; }
+    .slot.disabled::after {
+      content: '🔒';
+      position: absolute;
+      font-size: 1.2rem;
+      z-index: 3;
+    }
+
+    .slot img { width: 100%; height: 100%; object-fit: contain; z-index: 2; cursor: grab; }
+    .slot img:active { cursor: grabbing; }
+    .slot-placeholder { position: absolute; font-size: 0.65rem; color: #424e5a; text-transform: uppercase; font-weight: bold; text-align: center; }
+
+    .swap-badge {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 34px;
+      height: 34px;
+      background: rgba(10, 12, 14, 0.9);
+      border: 2px solid var(--accent-gold);
+      border-radius: 6px;
+      overflow: hidden;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .swap-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .build-note-wrapper {
+      margin-top: auto;
+      width: 100%;
+    }
+    .build-note {
+      width: 100%;
+      height: 75px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-weight: bold;
+      padding: 8px;
+      border-radius: 4px;
+      resize: none;
+    }
+    .build-note:focus {
+      border-color: var(--accent-gold);
+      outline: none;
+    }
+
+    body.screenshot-mode .hide-ss { display: none !important; }
+    body.screenshot-mode .build-card { border-color: var(--accent-gold); background: var(--card-bg) !important; }
+    body.screenshot-mode .collection-section { display: block !important; }
+    body.screenshot-mode .tabs-bar { display: none !important; }
+    body.screenshot-mode .build-note { border-color: transparent; background: transparent; resize: none; }
+    body.screenshot-mode input, body.screenshot-mode textarea { pointer-events: none; }
+    body.screenshot-mode .slot { pointer-events: none; cursor: default; }
+    body.screenshot-mode .slot img { cursor: default; }
+    
+    .screenshot-controls {
+      display: none;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 1000;
+      gap: 10px;
+      background: rgba(10, 12, 14, 0.9);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--accent-gold);
+    }
+    body.screenshot-mode .screenshot-controls { display: flex; }
+
+    .signature {
+      position: fixed;
+      bottom: 10px;
+      right: 15px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: right;
+      z-index: 50;
+      pointer-events: none;
+      font-weight: bold;
+      background: rgba(10, 12, 14, 0.7);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+    .signature span { color: var(--accent-gold); display: block; }
+
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 100; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--panel-bg); border: 2px solid var(--accent-gold); padding: 20px; border-radius: 8px; width: 440px; max-width: 90%; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted); }
+    .form-group select, .form-group input { width: 100%; padding: 8px; background: var(--card-bg); color: #fff; border: 1px solid var(--border-color); border-radius: 4px; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent-gold); outline: none; }
+    
+    .item-preview {
+      width: 90px; height: 90px; margin: 10px auto;
+      background: var(--card-bg); border: 2px solid var(--border-color);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .item-preview img { width: 100%; height: 100%; object-fit: contain; }
+    #dbStatus { font-size: 0.8rem; color: var(--accent-gold); margin-left: 10px; }
+  </style>
+</head>
+<body>
+
+  <header class="hide-ss">
+    <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 15px;">
+      <div>
+        <h1>Albion Set Manager</h1>
+        <span id="dbStatus">Wczytywanie bazy...</span>
+      </div>
+      <div id="saveStatus">Zapisano automatycznie</div>
+    </div>
+    <div class="controls">
+      <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="PL-PL">Polski (PL)</option>
+        <option value="EN-US">English (EN)</option>
+      </select>
+      <button onclick="addCategory()">+ Dodaj Kolekcję</button>
+      <button onclick="toggleScreenshotMode()" class="primary">Tryb Obrazu</button>
+      <button onclick="exportJSON()">Eksportuj</button>
+      <button onclick="importJSON()">Importuj</button>
+    </div>
+  </header>
+
+  <div class="screenshot-controls">
+    <button onclick="generateHighResImage()" class="primary">Pobierz Zdjęcie (High-Res)</button>
+    <button onclick="toggleScreenshotMode()" class="danger">✕ Wyjdź z trybu obrazu</button>
+  </div>
+
+  <div id="tabsBar" class="tabs-bar hide-ss"></div>
+
+  <div id="categoriesContainer"></div>
+
+  <div class="signature">
+    Made by Boongo
+    <span>Albion Online: B0nio</span>
+  </div>
+
+  <div class="modal" id="itemModal">
+    <div class="modal-content">
+      <h3 style="margin-bottom:15px; color:var(--accent-gold)" id="modalTitle">Wybierz Przedmiot</h3>
+      
+      <div class="item-preview" id="modalPreview">
+        <span style="font-size: 0.7rem; color: var(--text-muted)">Podgląd</span>
+      </div>
+
+      <div class="form-group">
+        <label>Szukaj przedmiotu</label>
+        <input type="text" id="modalSearch" placeholder="Wpisz nazwę..." oninput="filterModalItems()" />
+      </div>
+
+      <div class="form-group">
+        <label>Przedmiot (<span id="itemCount">0</span>)</label>
+        <select id="modalItemSelect" onchange="updateModalPreview()"></select>
+      </div>
+      <div class="form-group" id="tierGroup">
+        <label>Tier</label>
+        <select id="modalTierSelect" onchange="updateModalPreview()">
+          <option value="T4">Tier 4</option>
+          <option value="T5">Tier 5</option>
+          <option value="T6">Tier 6</option>
+          <option value="T7">Tier 7</option>
+          <option value="T8">Tier 8</option>
+        </select>
+      </div>
+      <div class="form-group" id="enchantGroup">
+        <label>Enchantment (Nasycenie)</label>
+        <select id="modalEnchantSelect" onchange="updateModalPreview()">
+          <option value="">.0</option>
+          <option value="@1">.1</option>
+          <option value="@2">.2</option>
+          <option value="@3">.3</option>
+          <option value="@4">.4</option>
+        </select>
+      </div>
+      <div class="form-group" id="swapGroup" style="display:none;">
+        <label>Swap (Drugi przedmiot)</label>
+        <select id="modalSwapSelect" onchange="updateModalPreview()">
+          <option value="">Brak</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+        <button onclick="closeModal()">Anuluj</button>
+        <button onclick="clearSlot()" style="background:#8b0000;">Zdejmij</button>
+        <button onclick="applySlotSelection()" class="primary">Załóż</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const CURRENT_DATA_VERSION = 8;
+const ITEMS_ICON_CDN = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/images/';
+const ITEMS_DB_URL = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/formatted/items.json';
+
+let currentLang = localStorage.getItem('ao_lang') || 'PL-PL';
+let rawItemsData = [];
+let saveTimeout = null;
+let activeTabCategoryIndex = 0;
+
+let globalItemsDB = {
+  Head: [], Armor: [], MainHand: [], OffHand: [], Shoes: [], Cape: [], Bag: [], Potion: [], Food: [], Mount: []
+};
+
+function loadAndMigrateData() {
+  const savedRaw = localStorage.getItem('ao_categories_v' + CURRENT_DATA_VERSION);
+  if (savedRaw) {
+    try { return JSON.parse(savedRaw); } catch(e) {}
+  }
+
+  for (let v = CURRENT_DATA_VERSION - 1; v >= 1; v--) {
+    const oldData = localStorage.getItem('ao_categories_v' + v);
+    if (oldData) {
+      try {
+        const parsed = JSON.parse(oldData);
+        localStorage.removeItem('ao_categories_v' + v);
+        return parsed;
+      } catch(e) {}
+    }
+  }
+
+  return {
+    categories: [
+      { 
+        name: 'Główne Zestawy', 
+        subgroups: [
+          { name: 'Tanki', collapsed: false, builds: [{ name: 'Set #1', isTwoHanded: false, slots: {}, note: '' }] }
+        ] 
+      }
+    ]
+  };
+}
+
+let collectionData = loadAndMigrateData();
+let activeTarget = { catIndex: null, subIndex: null, buildIndex: null, slotKey: null };
+
+const ALLOWED_CAPES = [
+  'CAPE', 'CAPEITEM_FW_MARTLOCK', 'CAPEITEM_FW_LYMHURST', 'CAPEITEM_FW_BRIDGEWATCH',
+  'CAPEITEM_FW_FORTSTERLING', 'CAPEITEM_FW_THETFORD', 'CAPEITEM_FW_CAERLEON',
+  'CAPEITEM_FW_BRECILIEN', 'CAPEITEM_AVALON', 'CAPEITEM_HERETIC', 'CAPEITEM_UNDEAD',
+  'CAPEITEM_KEEPER', 'CAPEITEM_MORGANA', 'CAPEITEM_DEMON', 'CAPEITEM_SMUGGLER'
+];
+
+async function loadFullAlbionDatabase() {
+  try {
+    const response = await fetch(ITEMS_DB_URL);
+    rawItemsData = await response.json();
+    
+    document.getElementById('langSelect').value = currentLang;
+    parseItemsForLanguage();
+
+    document.getElementById('dbStatus').innerText = '✓ Baza danych wczytana poprawnie';
+    document.getElementById('dbStatus').style.color = '#2ecc71';
+  } catch (err) {
+    document.getElementById('dbStatus').innerText = '⚠ Błąd pobierania bazy danych';
+    document.getElementById('dbStatus').style.color = '#e74c3c';
+  }
+}
+
+function cleanItemName(name) {
+  if (!name) return '';
+  return name
+    .replace(/\s*(Adepta|Znawcy|Mistrza|Wszechmistrza|Starszego|Novice's|Journeyman's|Adept's|Expert's|Master's|Grandmaster's|Elder's)\s*/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getItemImageUrl(itemId, tier, enchant) {
+  let fullId = itemId;
+  if (!itemId.startsWith('T4_') && !itemId.startsWith('T5_') && !itemId.startsWith('T6_') && !itemId.startsWith('T7_') && !itemId.startsWith('T8_') && !itemId.startsWith('UNIQUE_')) {
+    fullId = `${tier}_${itemId}`;
+  }
+  if (enchant) {
+    fullId += enchant;
+  }
+  return `${ITEMS_ICON_CDN}${fullId}.png`;
+}
+
+function buildItemsForLang(targetLanguage) {
+  const dbTemp = {
+    Head: {}, Armor: {}, MainHand: {}, OffHand: {}, Shoes: {}, Cape: {}, Bag: {}, Potion: {}, Food: {}, Mount: {}
+  };
+
+  rawItemsData.forEach(item => {
+    if (!item.UniqueName || !item.LocalizedNames) return;
+    const id = item.UniqueName;
+    if (id.includes('@')) return;
+
+    let rawName = item.LocalizedNames[targetLanguage] || item.LocalizedNames['EN-US'];
+    if (!rawName) return;
+    const lowerName = rawName.toLowerCase();
+
+    if (
+      lowerName.includes('skórka garderoby') || lowerName.includes('skorki garderoby') ||
+      lowerName.includes('poszukiwacza przygód') || lowerName.includes('poszukiwacza przygod') ||
+      lowerName.includes('legendarnego odkrywcy') || lowerName.includes('odkrywcy') ||
+      lowerName.includes('hełm nietoperzy') || lowerName.includes('helm nietoperzy') || lowerName.includes('nietoperz') ||
+      lowerName.includes('kapelusz gry') || lowerName.includes('kaftan gry') ||
+      lowerName.includes('buty gry') || lowerName.includes('spodnie gry') || lowerName.includes('gry') ||
+      lowerName.includes('kauczukowe buty') || lowerName.includes('kaczukowe buty') ||
+      lowerName.includes('misa') || lowerName.includes('miska') || lowerName.includes('puchar') || lowerName.includes('kocioł') || lowerName.includes('kociol') ||
+      lowerName.includes('skrzynia') || lowerName.includes('skrzynka') || lowerName.includes('pustook') || lowerName.includes('eliksir') ||
+      lowerName.includes('kapusta') || lowerName.includes('cabbage') || lowerName.includes('srebra') || lowerName.includes('silver') ||
+      lowerName.includes('pieczęć') || lowerName.includes('sigil') ||
+      id.includes('TORCH') || lowerName.includes('łuczywo') || lowerName.includes('luczywo') ||
+      (id.includes('GUILD') && (id.includes('SHIELD') || id.includes('BANNER') || lowerName.includes('sztandar')))
+    ) return;
+
+    if (
+      id.startsWith('T1_') || id.startsWith('T2_') || id.startsWith('T3_') ||
+      id.includes('BEGINNER') || id.includes('NOVICE') || id.includes('JOURNEYMAN') ||
+      id.includes('ARTEFACT') || id.includes('RESOURCE') || id.includes('TOKEN') || 
+      id.includes('QUESTITEM') || id.includes('FARM') || id.includes('JOURNAL') ||
+      id.includes('TROPHY') || id.includes('CONSUMABLE_BUFF') || id.includes('GATHERER') ||
+      id.includes('VANITY') || id.includes('SKIN') || id.includes('COSTUME') ||
+      id.includes('DRESS') || id.includes('WEDDING') || id.includes('EASTER') ||
+      id.includes('HALLOWEEN') || id.includes('XMAS') || id.includes('CHRISTMAS') ||
+      id.includes('FOOL') || id.includes('LVK_') || id.includes('FURNITURE') || id.includes('DECORATION')
+    ) return;
+
+    let tier = 'T4';
+    const matchTier = id.match(/^T([4-8])_/);
+    if (matchTier) tier = 'T' + matchTier[1];
+
+    let cleanId = id;
+    if (id.startsWith('T4_') || id.startsWith('T5_') || id.startsWith('T6_') || id.startsWith('T7_') || id.startsWith('T8_')) {
+      cleanId = id.substring(3);
+    }
+
+    let targetCategory = null;
+    let is2H = id.includes('_2H_');
+
+    if (id.includes('BAG') && !id.includes('CABAG') && !id.includes('MESSENGER')) {
+      targetCategory = 'Bag';
+    }
+    else if (id.includes('CAPE') && !id.includes('BAG')) {
+      if (ALLOWED_CAPES.includes(cleanId)) targetCategory = 'Cape';
+    } 
+    else if (id.includes('POTION') && !lowerName.includes('tajemna esencja')) { 
+      targetCategory = 'Potion'; 
+    } 
+    else if ((id.includes('MEAL') || id.includes('FOOD') || id.includes('SOUP') || id.includes('STEW') || id.includes('SANDWICH') || id.includes('PIE') || id.includes('OMELETTE') || id.includes('ROAST')) && !lowerName.includes('upuszczacz krwi') && !lowerName.includes('schowek')) { 
+      targetCategory = 'Food'; 
+    } 
+    else if ((id.includes('MOUNT') || id.includes('HORSE') || id.includes('MAMMOTH') || id.includes('COUGAR') || id.includes('DIREWOLF') || id.includes('BEAR') || id.includes('SWIFTCLAW') || id.includes('LIZARD') || id.includes('BIRD') || id.includes('RHINO') || id.includes('CAMEL') || id.includes('BATTLEMOUNT') || id.includes('MONSTER')) && !id.includes('FURNITURE') && !lowerName.startsWith('posąg') && !lowerName.includes('ryba') && !lowerName.includes('surowiec')) { 
+      targetCategory = 'Mount'; 
+    } 
+    else if (id.includes('_HEAD_') || id.includes('_HELMET_') || id.includes('_COWL_') || id.includes('_HOOD_')) { 
+      targetCategory = 'Head'; 
+    } 
+    else if (id.includes('_ARMOR_') || id.includes('_ROBE_') || id.includes('_JACKET_') || id.includes('_ARMOUR_')) { 
+      targetCategory = 'Armor'; 
+    } 
+    else if (id.includes('_SHOES_') || id.includes('_BOOTS_')) { 
+      targetCategory = 'Shoes'; 
+    } 
+    else if (id.includes('_OFF_') || id.includes('_SHIELD') || id.includes('_BOOK') || id.includes('_ORB') || id.includes('_TOTEM') || id.includes('_HORN') || id.includes('_TALISMAN') || id.includes('_MUISER') || id.includes('OFF_GRIMOIRE')) { 
+      if (!lowerName.includes('zwój praw') && !lowerName.includes('zwoj praw')) {
+        targetCategory = 'OffHand'; 
+      }
+    } 
+    else if (id.includes('_MAIN_') || id.includes('_2H_')) {
+      if (!id.includes('_TOOL_') && !lowerName.includes('kilof') && !lowerName.includes('sierp')) {
+        if (!targetCategory) targetCategory = 'MainHand';
+      }
+    }
+
+    if (targetCategory) {
+      const displayName = cleanItemName(rawName);
+      if (!dbTemp[targetCategory][cleanId]) {
+        dbTemp[targetCategory][cleanId] = {
+          id: cleanId,
+          rawId: id,
+          name: displayName,
+          tiers: new Set([tier]),
+          isTwoHanded: is2H
+        };
+      } else {
+        dbTemp[targetCategory][cleanId].tiers.add(tier);
+      }
+    }
+  });
+
+  dbTemp.OffHand['OFF_GRIMOIRE_TIME'] = {
+    id: 'OFF_GRIMOIRE_TIME',
+    rawId: 'OFF_GRIMOIRE_TIME',
+    name: targetLanguage === 'PL-PL' ? 'Zatrzymany w Czasie Grymuar' : 'Time-Frozen Grimoire',
+    tiers: new Set(['T4', 'T5', 'T6', 'T7', 'T8']),
+    isTwoHanded: false
+  };
+
+  const formattedDB = {};
+  Object.keys(dbTemp).forEach(cat => {
+    formattedDB[cat] = [];
+    Object.values(dbTemp[cat]).forEach(item => {
+      formattedDB[cat].push({
+        id: item.id,
+        rawId: item.rawId,
+        name: item.name,
+        tiers: Array.from(item.tiers).sort(),
+        isTwoHanded: item.isTwoHanded
+      });
+    });
+    formattedDB[cat].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  return formattedDB;
+}
+
+function parseItemsForLanguage() {
+  const plDB = buildItemsForLang('PL-PL');
+
+  if (currentLang === 'PL-PL') {
+    globalItemsDB = plDB;
+  } else {
+    const enDBUnfiltered = buildItemsForLang('EN-US');
+    globalItemsDB = {};
+
+    Object.keys(enDBUnfiltered).forEach(cat => {
+      const validPlIds = new Set((plDB[cat] || []).map(item => item.id));
+      globalItemsDB[cat] = enDBUnfiltered[cat].filter(item => validPlIds.has(item.id));
+    });
+  }
+
+  render();
+}
+
+function changeLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('ao_lang', lang);
+  parseItemsForLanguage();
+}
+
+function saveData() {
+  localStorage.setItem('ao_categories_v' + CURRENT_DATA_VERSION, JSON.stringify(collectionData));
+  
+  const statusEl = document.getElementById('saveStatus');
+  statusEl.classList.add('show');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    statusEl.classList.remove('show');
+  }, 1500);
+}
+
+function render() {
+  const container = document.getElementById('categoriesContainer');
+  const tabsBar = document.getElementById('tabsBar');
+  container.innerHTML = '';
+  tabsBar.innerHTML = '';
+
+  if (activeTabCategoryIndex >= collectionData.categories.length) {
+    activeTabCategoryIndex = Math.max(0, collectionData.categories.length - 1);
+  }
+
+  collectionData.categories.forEach((cat, cIdx) => {
+    const tabBtn = document.createElement('button');
+    tabBtn.className = `tab-btn ${cIdx === activeTabCategoryIndex ? 'active' : ''}`;
+    tabBtn.innerText = cat.name || `Kolekcja ${cIdx + 1}`;
+    tabBtn.onclick = () => {
+      activeTabCategoryIndex = cIdx;
+      render();
+    };
+    tabsBar.appendChild(tabBtn);
+  });
+
+  collectionData.categories.forEach((cat, cIdx) => {
+    const section = document.createElement('div');
+    section.className = `collection-section ${cIdx === activeTabCategoryIndex ? 'active' : ''}`;
+
+    let subgroupsHTML = '';
+    if (cat.subgroups) {
+      cat.subgroups.forEach((sub, sIdx) => {
+        let buildsHTML = '';
+        sub.builds.forEach((build, bIdx) => {
+          const slots = ['Bag', 'Head', 'Cape', 'MainHand', 'Armor', 'OffHand', 'Potion', 'Shoes', 'Food', 'Mount'];
+          let slotsHTML = '';
+          
+          slots.forEach(slotKey => {
+            const item = build.slots[slotKey];
+            const isDisabled = (slotKey === 'OffHand' && build.isTwoHanded);
+            let imgTag = '';
+            let swapBadgeTag = '';
+
+            if (item && !isDisabled) {
+              const imgSrc = getItemImageUrl(item.id, item.tier, item.enchant);
+
+              imgTag = `<img src="${imgSrc}" crossorigin="anonymous" alt="${slotKey}" draggable="true" ondragstart="handleDragStart(event, ${cIdx}, ${sIdx}, ${bIdx}, '${slotKey}')" />`;
+              
+              if (slotKey !== 'Bag' && item.swap) {
+                const swapImgSrc = getItemImageUrl(item.swap.id, item.swap.tier, item.swap.enchant);
+                swapBadgeTag = `
+                  <div class="swap-badge" title="Swap: ${item.swap.id}">
+                    <img src="${swapImgSrc}" crossorigin="anonymous" />
+                  </div>
+                `;
+              }
+            }
+
+            slotsHTML += `
+              <div class="slot slot-${slotKey} ${isDisabled ? 'disabled' : ''}" 
+                   onclick="openModal(${cIdx}, ${sIdx}, ${bIdx}, '${slotKey}')"
+                   ondragover="handleDragOver(event, '${slotKey}')"
+                   ondragleave="handleDragLeave(event)"
+                   ondrop="handleDrop(event, ${cIdx}, ${sIdx}, ${bIdx}, '${slotKey}')">
+                ${imgTag ? imgTag + swapBadgeTag : `<span class="slot-placeholder">${slotKey}</span>`}
+              </div>
+            `;
+          });
+
+          buildsHTML += `
+            <div class="build-card">
+              <div class="build-header">
+                <input type="text" class="build-name" value="${build.name}" onchange="updateBuildName(${cIdx}, ${sIdx}, ${bIdx}, this.value)" />
+                <div class="build-actions hide-ss">
+                  <button onclick="clearBuild(${cIdx}, ${sIdx}, ${bIdx})" title="Wyczyść set" style="padding:2px 6px;">🧹</button>
+                  <button onclick="cloneBuild(${cIdx}, ${sIdx}, ${bIdx})" title="Klonuj zestaw" style="padding:2px 6px;">📋</button>
+                  <button class="danger" onclick="removeBuild(${cIdx}, ${sIdx}, ${bIdx})" style="padding:2px 6px;" title="Usuń zestaw">✕</button>
+                </div>
+              </div>
+              <div class="equipment-paperdoll">${slotsHTML}</div>
+              <div class="build-note-wrapper">
+                <textarea class="build-note" placeholder="Notatka do zestawu..." onchange="updateBuildNote(${cIdx}, ${sIdx}, ${bIdx}, this.value)">${build.note || ''}</textarea>
+              </div>
+            </div>
+          `;
+        });
+
+        subgroupsHTML += `
+          <div class="subgroup-container ${sub.collapsed ? 'collapsed' : ''}">
+            <div class="subgroup-header">
+              <div class="subgroup-title-wrapper">
+                <button onclick="toggleSubgroupCollapse(${cIdx}, ${sIdx})" style="padding:4px 8px;" title="Zwiń / Rozwiń">${sub.collapsed ? '▼ Rozwiń' : '▲ Zwiń'}</button>
+                <input type="text" class="subgroup-title" value="${sub.name}" onchange="updateSubgroupName(${cIdx}, ${sIdx}, this.value)" />
+              </div>
+              <div class="controls hide-ss">
+                <button onclick="addBuild(${cIdx}, ${sIdx})" class="primary">+ Dodaj kolejny set</button>
+                <button onclick="removeSubgroup(${cIdx}, ${sIdx})" class="danger" style="padding:4px 8px;">Usuń grupę</button>
+              </div>
+            </div>
+            <div class="subgroup-body">
+              <div class="builds-grid">${buildsHTML}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    section.innerHTML = `
+      <div class="category-header">
+        <div class="category-title-wrapper">
+          <input type="text" class="category-title" value="${cat.name}" onchange="updateCategoryName(${cIdx}, this.value)" />
+        </div>
+        <div class="controls hide-ss">
+          <button onclick="addSubgroup(${cIdx})">+ Dodaj podgrupę</button>
+          <button onclick="removeCategory(${cIdx})" class="danger">Usuń Kolekcję</button>
+        </div>
+      </div>
+      <div class="collection-body">
+        <div class="category-content">
+          ${subgroupsHTML}
+        </div>
+      </div>
+    `;
+
+    container.appendChild(section);
+  });
+}
+
+let draggedItemInfo = null;
+
+function handleDragStart(e, cIdx, sIdx, bIdx, slotKey) {
+  if (document.body.classList.contains('screenshot-mode')) return;
+  draggedItemInfo = { catIndex: cIdx, subIndex: sIdx, buildIndex: bIdx, slotKey: slotKey };
+  e.dataTransfer.setData('text/plain', JSON.stringify(draggedItemInfo));
+}
+
+function isItemCompatibleWithSlot(itemId, targetSlotKey) {
+  if (!itemId) return false;
+  const list = globalItemsDB[targetSlotKey] || [];
+  return list.some(i => i.id === itemId);
+}
+
+function handleDragOver(e, targetSlotKey) {
+  e.preventDefault();
+  if (document.body.classList.contains('screenshot-mode')) return;
+  if (!draggedItemInfo) return;
+
+  const { catIndex: srcCIdx, subIndex: srcSIdx, buildIndex: srcBIdx, slotKey: srcSlotKey } = draggedItemInfo;
+  const srcBuild = collectionData.categories[srcCIdx].subgroups[srcSIdx].builds[srcBIdx];
+  const itemToMove = srcBuild.slots[srcSlotKey];
+
+  if (!itemToMove) {
+    e.currentTarget.classList.add('drag-over-invalid');
+    return;
+  }
+
+  const isCompatible = isItemCompatibleWithSlot(itemToMove.id, targetSlotKey);
+
+  if (isCompatible) {
+    e.currentTarget.classList.add('drag-over');
+  } else {
+    e.currentTarget.classList.add('drag-over-invalid');
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over', 'drag-over-invalid');
+}
+
+function handleDrop(e, targetCIdx, targetSIdx, targetBIdx, targetSlotKey) {
+  e.preventDefault();
+  if (document.body.classList.contains('screenshot-mode')) return;
+  e.currentTarget.classList.remove('drag-over', 'drag-over-invalid');
+
+  if (!draggedItemInfo) return;
+
+  const { catIndex: srcCIdx, subIndex: srcSIdx, buildIndex: srcBIdx, slotKey: srcSlotKey } = draggedItemInfo;
+  
+  if (targetSlotKey === 'OffHand' && collectionData.categories[targetCIdx].subgroups[targetSIdx].builds[targetBIdx].isTwoHanded) return;
+
+  const srcBuild = collectionData.categories[srcCIdx].subgroups[srcSIdx].builds[srcBIdx];
+  const targetBuild = collectionData.categories[targetCIdx].subgroups[targetSIdx].builds[targetBIdx];
+
+  const itemToMove = srcBuild.slots[srcSlotKey];
+  if (!itemToMove) return;
+
+  if (!isItemCompatibleWithSlot(itemToMove.id, targetSlotKey)) {
+    draggedItemInfo = null;
+    return;
+  }
+
+  const isCloning = e.shiftKey;
+  const targetExistingItem = targetBuild.slots[targetSlotKey];
+
+  targetBuild.slots[targetSlotKey] = JSON.parse(JSON.stringify(itemToMove));
+  if (targetSlotKey === 'MainHand') {
+    const is2H = isItemTwoHanded(itemToMove.id, targetSlotKey);
+    targetBuild.isTwoHanded = is2H;
+    if (is2H) delete targetBuild.slots['OffHand'];
+  }
+
+  if (!isCloning) {
+    if (srcCIdx === targetCIdx && srcSIdx === targetSIdx && srcBIdx === targetBIdx && srcSlotKey === targetSlotKey) {
+      draggedItemInfo = null;
+      return;
+    }
+
+    if (targetExistingItem) {
+      srcBuild.slots[srcSlotKey] = targetExistingItem;
+      if (srcSlotKey === 'MainHand') {
+        const is2H = isItemTwoHanded(targetExistingItem.id, srcSlotKey);
+        srcBuild.isTwoHanded = is2H;
+        if (is2H) delete srcBuild.slots['OffHand'];
+      }
+    } else {
+      delete srcBuild.slots[srcSlotKey];
+      if (srcSlotKey === 'MainHand') srcBuild.isTwoHanded = false;
+    }
+  }
+
+  draggedItemInfo = null;
+  saveData();
+  render();
+}
+
+function isItemTwoHanded(itemId, slotKey) {
+  if (slotKey !== 'MainHand') return false;
+  const list = globalItemsDB.MainHand || [];
+  const found = list.find(i => i.id === itemId);
+  return found ? !!found.isTwoHanded : false;
+}
+
+function toggleSubgroupCollapse(cIdx, sIdx) {
+  collectionData.categories[cIdx].subgroups[sIdx].collapsed = !collectionData.categories[cIdx].subgroups[sIdx].collapsed;
+  saveData();
+  render();
+}
+
+function addCategory() {
+  collectionData.categories.push({ 
+    name: 'Nowa Kolekcja', 
+    subgroups: [
+      { name: 'Ogólne', collapsed: false, builds: [{ name: 'Set #1', isTwoHanded: false, slots: {}, note: '' }] }
+    ] 
+  });
+  activeTabCategoryIndex = collectionData.categories.length - 1;
+  saveData();
+  render();
+}
+
+function removeCategory(cIdx) {
+  if (collectionData.categories.length <= 1) return alert('Musisz zostawić przynajmniej jedną kolekcję.');
+  if (!confirm('Czy na pewno chcesz usunąć kolekcję?')) return;
+  collectionData.categories.splice(cIdx, 1);
+  if (activeTabCategoryIndex >= collectionData.categories.length) {
+    activeTabCategoryIndex = collectionData.categories.length - 1;
+  }
+  saveData();
+  render();
+}
+
+function updateCategoryName(cIdx, name) {
+  collectionData.categories[cIdx].name = name;
+  saveData();
+  render();
+}
+
+function addSubgroup(cIdx) {
+  if (!collectionData.categories[cIdx].subgroups) collectionData.categories[cIdx].subgroups = [];
+  collectionData.categories[cIdx].subgroups.push({
+    name: 'Nowa grupa (np. DPS)',
+    collapsed: false,
+    builds: [{ name: 'Set #1', isTwoHanded: false, slots: {}, note: '' }]
+  });
+  saveData();
+  render();
+}
+
+function removeSubgroup(cIdx, sIdx) {
+  if (collectionData.categories[cIdx].subgroups.length <= 1) return alert('Kolekcja musi mieć przynajmniej jedną podgrupę.');
+  if (!confirm('Czy na pewno chcesz usunąć grupę?')) return;
+  collectionData.categories[cIdx].subgroups.splice(sIdx, 1);
+  saveData();
+  render();
+}
+
+function updateSubgroupName(cIdx, sIdx, name) {
+  collectionData.categories[cIdx].subgroups[sIdx].name = name;
+  saveData();
+}
+
+function addBuild(cIdx, sIdx) {
+  const subgroup = collectionData.categories[cIdx].subgroups[sIdx];
+  subgroup.builds.push({ name: `Set #${subgroup.builds.length + 1}`, isTwoHanded: false, slots: {}, note: '' });
+  saveData();
+  render();
+}
+
+function cloneBuild(cIdx, sIdx, bIdx) {
+  const sourceBuild = collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx];
+  const cloned = JSON.parse(JSON.stringify(sourceBuild));
+  cloned.name = `${sourceBuild.name} (Kopia)`;
+  collectionData.categories[cIdx].subgroups[sIdx].builds.splice(bIdx + 1, 0, cloned);
+  saveData();
+  render();
+}
+
+function clearBuild(cIdx, sIdx, bIdx) {
+  collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].slots = {};
+  collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].isTwoHanded = false;
+  saveData();
+  render();
+}
+
+function removeBuild(cIdx, sIdx, bIdx) {
+  collectionData.categories[cIdx].subgroups[sIdx].builds.splice(bIdx, 1);
+  saveData();
+  render();
+}
+
+function updateBuildName(cIdx, sIdx, bIdx, name) {
+  collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].name = name;
+  saveData();
+}
+
+function updateBuildNote(cIdx, sIdx, bIdx, note) {
+  collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].note = note;
+  saveData();
+}
+
+function openModal(cIdx, sIdx, bIdx, slotKey) {
+  if (document.body.classList.contains('screenshot-mode')) return;
+  if (slotKey === 'OffHand' && collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].isTwoHanded) return;
+  activeTarget = { catIndex: cIdx, subIndex: sIdx, buildIndex: bIdx, slotKey: slotKey };
+  
+  const searchInput = document.getElementById('modalSearch');
+  searchInput.value = '';
+  populateModalSelect(slotKey);
+
+  const swapGroup = document.getElementById('swapGroup');
+  if (slotKey === 'Bag') {
+    swapGroup.style.display = 'none';
+  } else {
+    swapGroup.style.display = 'block';
+    populateModalSwapSelect(slotKey);
+  }
+
+  const currentItem = collectionData.categories[cIdx].subgroups[sIdx].builds[bIdx].slots[slotKey];
+  if (currentItem) {
+    document.getElementById('modalItemSelect').value = currentItem.id;
+    document.getElementById('modalTierSelect').value = currentItem.tier || 'T4';
+    document.getElementById('modalEnchantSelect').value = currentItem.enchant || '';
+    if (slotKey !== 'Bag' && currentItem.swap) {
+      document.getElementById('modalSwapSelect').value = currentItem.swap.id;
+    } else if (slotKey !== 'Bag') {
+      document.getElementById('modalSwapSelect').value = '';
+    }
+  } else {
+    if (slotKey !== 'Bag') {
+      document.getElementById('modalSwapSelect').value = '';
+    }
+  }
+
+  document.getElementById('itemModal').classList.add('active');
+  updateModalPreview();
+  setTimeout(() => searchInput.focus(), 50);
+}
+
+function populateModalSelect(slotKey, filterText = '') {
+  const select = document.getElementById('modalItemSelect');
+  const options = globalItemsDB[slotKey] || [];
+  const filtered = options.filter(opt => opt.name.toLowerCase().includes(filterText.toLowerCase()));
+  
+  document.getElementById('itemCount').innerText = filtered.length;
+
+  const fragment = document.createDocumentFragment();
+  filtered.forEach(opt => {
+    const el = document.createElement('option');
+    el.value = opt.id;
+    el.textContent = opt.name;
+    el.setAttribute('data-rawid', opt.rawId || opt.id);
+    el.setAttribute('data-2h', !!opt.isTwoHanded);
+    el.setAttribute('data-tiers', JSON.stringify(opt.tiers || []));
+    fragment.appendChild(el);
+  });
+
+  select.innerHTML = '';
+  select.appendChild(fragment);
+}
+
+function populateModalSwapSelect(slotKey) {
+  const select = document.getElementById('modalSwapSelect');
+  const options = globalItemsDB[slotKey] || [];
+  
+  const fragment = document.createDocumentFragment();
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Brak';
+  fragment.appendChild(defaultOption);
+
+  options.forEach(opt => {
+    const el = document.createElement('option');
+    el.value = opt.id;
+    el.textContent = opt.name;
+    el.setAttribute('data-rawid', opt.rawId || opt.id);
+    fragment.appendChild(el);
+  });
+
+  select.innerHTML = '';
+  select.appendChild(fragment);
+}
+
+function filterModalItems() {
+  populateModalSelect(activeTarget.slotKey, document.getElementById('modalSearch').value);
+  updateModalPreview();
+}
+
+function closeModal() {
+  document.getElementById('itemModal').classList.remove('active');
+}
+
+function updateModalPreview() {
+  const itemSelect = document.getElementById('modalItemSelect');
+  const selectedOpt = itemSelect.options[itemSelect.selectedIndex];
+  const previewBox = document.getElementById('modalPreview');
+
+  if (!selectedOpt) {
+    previewBox.innerHTML = '<span style="font-size: 0.7rem; color: var(--text-muted)">Brak wyboru</span>';
+    return;
+  }
+
+  const itemId = itemSelect.value;
+  const availableTiers = JSON.parse(selectedOpt.getAttribute('data-tiers') || '[]');
+  const tierSelect = document.getElementById('modalTierSelect');
+
+  Array.from(tierSelect.options).forEach(opt => {
+    if (availableTiers.length > 0) {
+      opt.disabled = !availableTiers.includes(opt.value);
+    } else {
+      opt.disabled = false;
+    }
+  });
+
+  if (tierSelect.selectedOptions[0]?.disabled) {
+    const firstValid = Array.from(tierSelect.options).find(o => !o.disabled);
+    if (firstValid) tierSelect.value = firstValid.value;
+  }
+
+  const tier = tierSelect.value;
+  const enchant = document.getElementById('modalEnchantSelect').value;
+  
+  const imgSrc = getItemImageUrl(itemId, tier, enchant);
+
+  let swapOverlayHTML = '';
+  if (activeTarget.slotKey !== 'Bag') {
+    const swapSelect = document.getElementById('modalSwapSelect');
+    const swapOpt = swapSelect.options[swapSelect.selectedIndex];
+    if (swapOpt && swapOpt.value !== '') {
+      const swapId = swapOpt.value;
+      const swapImgSrc = getItemImageUrl(swapId, tier, enchant);
+      swapOverlayHTML = `
+        <div class="swap-badge">
+          <img src="${swapImgSrc}" crossorigin="anonymous" />
+        </div>
+      `;
+    }
+  }
+
+  previewBox.innerHTML = `<img src="${imgSrc}" crossorigin="anonymous" />${swapOverlayHTML}`;
+}
+
+function applySlotSelection() {
+  const { catIndex, subIndex, buildIndex, slotKey } = activeTarget;
+  const itemSelect = document.getElementById('modalItemSelect');
+  const selectedOpt = itemSelect.options[itemSelect.selectedIndex];
+  
+  if (!selectedOpt) return closeModal();
+
+  const itemId = itemSelect.value;
+  const rawId = selectedOpt.getAttribute('data-rawid');
+  const is2H = selectedOpt.getAttribute('data-2h') === 'true';
+  const tier = document.getElementById('modalTierSelect').value;
+  const enchant = document.getElementById('modalEnchantSelect').value;
+
+  let swapData = null;
+  if (slotKey !== 'Bag') {
+    const swapSelect = document.getElementById('modalSwapSelect');
+    const swapOpt = swapSelect.options[swapSelect.selectedIndex];
+    if (swapOpt && swapOpt.value !== '') {
+      swapData = {
+        id: swapOpt.value,
+        rawId: swapOpt.getAttribute('data-rawid'),
+        tier: tier,
+        enchant: enchant
+      };
+    }
+  }
+
+  const currentBuild = collectionData.categories[catIndex].subgroups[subIndex].builds[buildIndex];
+  currentBuild.slots[slotKey] = { id: itemId, rawId: rawId, tier, enchant, swap: swapData };
+
+  if (slotKey === 'MainHand') {
+    currentBuild.isTwoHanded = is2H;
+    if (is2H) delete currentBuild.slots['OffHand'];
+  }
+
+  saveData();
+  render();
+  closeModal();
+}
+
+function clearSlot() {
+  const { catIndex, subIndex, buildIndex, slotKey } = activeTarget;
+  const currentBuild = collectionData.categories[catIndex].subgroups[subIndex].builds[buildIndex];
+  
+  delete currentBuild.slots[slotKey];
+  if (slotKey === 'MainHand') currentBuild.isTwoHanded = false;
+
+  saveData();
+  render();
+  closeModal();
+}
+
+function toggleScreenshotMode() {
+  document.body.classList.toggle('screenshot-mode');
+}
+
+async function inlineImagesAsBase64(rootElement) {
+  const images = rootElement.querySelectorAll('img');
+  const promises = Array.from(images).map(img => {
+    return new Promise((resolve) => {
+      const src = img.src;
+      if (!src || src.startsWith('data:')) {
+        resolve();
+        return;
+      }
+      const imageObj = new Image();
+      imageObj.crossOrigin = 'anonymous';
+      imageObj.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = imageObj.naturalWidth || 64;
+          canvas.height = imageObj.naturalHeight || 64;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imageObj, 0, 0);
+          img.src = canvas.toDataURL('image/png');
+        } catch (e) {}
+        resolve();
+      };
+      imageObj.onerror = function() {
+        resolve();
+      };
+      imageObj.src = src;
+    });
+  });
+  await Promise.all(promises);
+}
+
+async function generateHighResImage() {
+  const element = document.body;
+  
+  if (!window.html2canvas) {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    document.head.appendChild(script);
+    await new Promise(resolve => script.onload = resolve);
+  }
+
+  const controls = document.querySelector('.screenshot-controls');
+  controls.style.display = 'none';
+
+  try {
+    await inlineImagesAsBase64(element);
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#0a0c0e'
+    });
+
+    const link = document.createElement('a');
+    link.download = 'albion_all_sets.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    console.error("Błąd generowania obrazu:", err);
+    alert("Wystąpił problem podczas generowania obrazka.");
+  } finally {
+    controls.style.display = 'flex';
+    render();
+  }
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(collectionData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `albion_sets.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (parsed && Array.isArray(parsed.categories)) {
+          collectionData = parsed;
+          saveData();
+          render();
+        }
+      } catch (err) {}
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+document.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('itemModal');
+  if (modal.classList.contains('active')) {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Enter') applySlotSelection();
+  }
+});
+
+loadFullAlbionDatabase();
+if (collectionData.categories.length === 0) addCategory();
+else render();
+</script>
+</body>
+</html>
